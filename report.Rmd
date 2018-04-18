@@ -1,0 +1,830 @@
+---
+title: "The Cause-Modified Life Table and Its Applications"
+subtitle: "An Analysis with Cancer Mortality Data""
+author: "Chris Yang"
+output: html_document
+layout: page
+---
+
+```{r setup, include=FALSE}
+library(downloader)
+library(knitr)
+library(ggplot2)
+library(gridExtra)
+library(kableExtra)
+library(tidyverse)
+```
+
+```{r echo=FALSE, results="hide", warning = FALSE}
+dir <- "https://raw.githubusercontent.com/KXYang/srcdata/master/cmlt/"
+filename <- "err_drink.csv"
+url <- paste0(dir, filename)
+if (!file.exists(filename)) download(url, destfile=filename)
+
+dir <- "https://raw.githubusercontent.com/KXYang/srcdata/master/cmlt/"
+filename <- "Mx_5x1.txt"
+url <- paste0(dir, filename)
+if (!file.exists(filename)) download(url, destfile=filename)
+
+dir <- "https://raw.githubusercontent.com/KXYang/srcdata/master/cmlt/"
+filename <- "Deaths_5x1.txt"
+url <- paste0(dir, filename)
+if (!file.exists(filename)) download(url, destfile=filename)
+
+dir <- "https://raw.githubusercontent.com/KXYang/srcdata/master/cmlt/"
+filename <- "lung_deaths.csv"
+url <- paste0(dir, filename)
+if (!file.exists(filename)) download(url, destfile=filename)
+
+dir <- "https://raw.githubusercontent.com/KXYang/srcdata/master/cmlt/"
+filename <- "liver_deaths.csv"
+url <- paste0(dir, filename)
+if (!file.exists(filename)) download(url, destfile=filename)
+
+dir <- "https://raw.githubusercontent.com/KXYang/srcdata/master/cmlt/"
+filename <- "oral_deaths.csv"
+url <- paste0(dir, filename)
+if (!file.exists(filename)) download(url, destfile=filename)
+```
+
+<br>
+
+## 1. Introduction
+
+Researchers use different terms when quantifying risk depending on study design and their own goals and preferences. **Excess Relative Risk (ERR)** is an epidemiological risk measure that quantifies how much the level of risk among persons with a given level of exposure exceeds the risk of non-exposed persons (WHO 2009). In general, when describing the additional risk of a disease that can be associated with an exposure, results are typically expressed in terms of ERR^[1].
+
+Associations between the ERR and "indices of change", such as life-years lost, can effectively evaluate the impacts of exposures to the low dose of radiation that exacerbate health^[2]. However, the relationships between ERR and those indices remains poorly understood.
+
+Kevin P. Brand (2005) recently conducted an analysis of the algorithm which can be called a cause-modified life table (CMLT), a straightforward extension of the cause-deleted life table^[3]. The author presented an approach for approximating that algorithm and used it to obtain remarkably simplified expressions for approximating three summary measures of population health: **life-years lost (LYL)**, **excess lifetime risk ratio (ELRR)**, and **risk of exposure-induced death (REID)**. In the article, the 1994 Canadian lung cancer mortality data was used for the baseline analysis and the algorithm performed well. However, the performances of approximations varied by the cause of death, as shown by testing the model for two other cases: bladder cancer and cardiovascular diseases. This variation may contribute to the performance evaluation when we test wider uses of the model. 
+
+Although it should be recognized that the approximations have limited potential, they perform adequately and display negligible error under a practical range of conditions (ERRs) if the cause of interest is a minor contributor to overall mortality.
+
+Based on this result, I conduct a reproducible analysis similar to that of Kevin P. Brand (2005) by using the mortality data for Canada in year 2010. In terms of the causes of death selected for the analysis, first lung cancer mortality data will be applied to replicate the behavior of the algorithm, also to prove that the model performs well in the current epidemiological pattern of lung cancer in Canada. Then I will extend the application of the model to another two causes: liver cancer and oral and pharyngeal cancer. My primary goal is to test whether there is evidence to indicate that the CMLT approximations can perform well over a wider set of circumstances.
+
+<br>
+
+## 2. Background
+
+The relative risk (RR) is a ratio of disease rates in exposed and unexposed groups without units of dimension. If, for example, the cancer rate in an exposed population is 5 out of 10,000, and in the unexposed population the rate is 2 out of 10,000, the relative risk would be 5 divided by 2, or 2.5. Excess relative risk (ERR) is one of the quantitative measures of excess risk that can be calculated from epidemiologic data. It is the fraction by which the risk for an exposed person exceeds that of a person who was not exposed. So it is simply the relative risk (RR) minus 1. In the example given above, the ERR would be equal to 1.5. It may also be explained by saying that the ERR equals 150%, meaning that the risk in the study population is 150% more of the risk in the unexposed population. Excess relative risk is also called excess rate ratio. 
+
+When describing risk over a range of doses, scientists usually define a dose-response model. Results based on this model are typically expressed in terms of ERR per dose.^[4] Table 1 gives an overview of the ERRs for two types of cancers associated with varying levels of alcohol consumption.
+
+```{r err_drinking, echo=FALSE}
+dat <- read.csv("err_drink.csv", sep = ',', header = TRUE)
+kable(dat, "html", caption="Table 1 Association Between Level of Alcohol Consumption and the Development of Certain Types of Cancers") %>%
+  kable_styling("striped")
+```
+
+<br>
+
+Table 1 illustrates the association between daily alcohol consumption and the ERR of two types of cancers. For example, people who drink on average up to 25 grams of pure alcohol per day have an excess relative risk of 0.17, compared with abstainers, of developing liver cancer. An ERR of 0.17 corresponds to a 17-percent higher risk. For people drinking more than 100 grams of pure alcohol per day, the ERR is 0.86. The same relationship can also be expressed as a risk increase of 86 percent. Research has demonstrated that, for the development of certain types of chronic diseases, the risk of disease increases with increasing average daily alcohol consumption ^[5].
+
+In the CMLT algorithm, life-table techniques are used to calculate **lifetime risk (LR)** and **life expectancy (LE)** for the baseline condition, to translate the age-specific ERRs into key elements in a life table, as well as expressions for **life-years lost (LYL)**, **excess lifetime risk ratio (ELRR)**, and **risk of exposure-induced death (REID)**.
+
+The life table method is likely the most frequently used method of mortality analysis. There are two forms of the life table: the cohort (or generation) life table and the current life table. Here we shall deal with the current life table, which gives a cross-sectional view of the mortality and survival experience of a population during a current year (e.g., the Canadian population of 2010). It is entirely dependent on the age-specific mortality rates prevailing in the year for which it is constructed. Such tables project the lifespan of each individual in a hypothetic cohort on the basis of the actual death rates in a given population. Current life tables may be either complete (single-year intervals) or abridged (age intervals greater than one year). In this article, our attention will mainly focus on the abridged life table with 5-year age intervals, 0 to 90 years old of age span, in order to match the age-specific cancer death counts in the same age intervals. Considerable effort will be involved in producing cause-modified models to generate numeric life-table estimates for some types of cancer.
+
+<br>
+
+## 3. Methods
+
+### 3.1 Mortality Rates
+
+It is necessary to utilize multiple data sources to analyze effectively the health state of a population. National mortality data are the most appropriate data to employ in models designed to monitor population health because these data enumerate the total deaths in the national population and cover a lengthy time span ^[6]. Mortality rates for all causes, obtained for the 2010 Canadian population, are used as one of the inputs for the calculation of the baseline elements (life expectancy and lifetime risk).
+
+The [Human Mortality Database (HMD)](http://www.mortality.org/) was created to provide open, international access to detailed mortality and population. The purpose of the database is to provide researchers around the world with easy access to detailed and comparable national mortality data via the Internet. The database contains original life tables for 37 countries or areas, as well as all raw data used in constructing those tables. 
+
+For the complete life table, the age-specific mortality rate is determined from the number of deaths $D_i$ and the mid-year population $P_i$ for the age interval ($x_i$, $x_{i+1}$) during the calendar year, where $i$ indexes the $i$th age category:
+
+<br>
+$$M_i = \frac{D_i}{P_i}\hspace{35pt}(1)$$
+<br>
+
+A current life table may be based on the deaths occurring over several (typically three) calendar years instead of one, e.g., the years 2009, 2010 and 2011. For each age group, the average number of deaths per year is determined and is then divided by the corresponding population size of the middle year (2010, in this example) to obtain an age-specific death rate. Usually, the middle year is a census year, so that population figures are available and more accurate. The purpose of such procedure is to reduce the effect of abnormalities in the mortality pattern which may exist in a single calendar year.
+
+For the abridged life table, we give the definition for the mortality rates $M_i$ for age interval $(x_i, x_{i + n})$:
+
+<br>
+$$M_i = \frac{\text{Number of deaths in interval }(x_i, x_{i+n})}{\text{Number of years lived in the interval }(x_i, x_{i+n}) \text{ by those alive at } x_i}\hspace{35pt}(2)$$
+<br>
+
+The denominator is a count of the number of person-years exposed to the risk of death in the population. A person-year is one year lived by one person. An individual can contribute from 0 to 1 person-years during one calendar year. The total person years lived by a population must be summed up. 
+
+Here we decide to use the 2010 Canadian mortality rates offered by the HMD. And we choose 5*1 (in the case of 5-year age group and a single calendar year) as our format of age and time. Part of the data are as follows:
+
+<br>
+
+```{r sample data, echo=FALSE}
+dat <- read.table("Mx_5x1.txt", skip=2, header=TRUE)
+dat %>%
+  drop_na() %>%
+  filter(Year == 2010) %>%
+  slice(2:19)
+```
+
+<br>
+
+The first two columns define the year and each age interval. The other three columns represent the mortality rates of male, female, and total population, respectively. 5-year age groups are defined in terms of completed age, so "5-9" extends from exact age 5 to just before the 10th birthday (sometimes written as "5-10"). 
+
+<br>
+
+### 3.2 Baseline Life-Table Indices
+
+Two life table results, **lifetime risk (LR)** and **life expectancy (LE)**, are computed from the entries of the probability of dying in the $i$th interval (denoted $q_i$). One of the elements in converting the age-specific mortality rate to the estimate of the probability of death is the fraction of the last year lived by those who have died at each interval (denoted $\alpha_i$). The results obtained by Chiang show that after age 4 the fractions $\alpha_i$ are invariant with respect to race, sex, and age, and that assumed value of 0.5 is valid ^[7]. However, because of the large proportion of infant deaths occurring in the first weeks of life, a much smaller value has been observed for the first year of life. Here we follow the data suggested by the HMD for the 2010 Canadian population: $\alpha_0$ = 0.07 and $\alpha_i$ = 0.5 for $i$ \ge 1.
+
+Returning to the computation of the estimate of the probability of death, we need a relationship between the estimate of probability $q_i$ and age specific death rate $M_i$. $M_i$ can be computed using the formula (1). For age interval of 5 years, the relationship is: 
+
+<br>
+
+$$q_i = \frac{M_i*n}{1+(1-\alpha_i)*M_i*n} \hspace{35pt}(3)$$
+where n is the duration of the $i$th age interval, which is 5 years in the current case.
+
+<br>
+
+Two elements in addition to $q_i$ are required for baseline life-table calculations: the probability of surviving from birth until the start of the $i$th age interval (denoted $S_i$) and the intensity ratio, which allows all-cause mortality to be apportioned to the cause of interest. Surviving from birth to the start of the $i$th interval is the joint probability of surviving the ($i-1$) intervening intervals. 
+
+<br>
+$$S_i = \prod_{k=1}^{i-1}(1-q_k) \hspace{35pt} (4)$$
+<br>
+
+- **Intensity Ratio**
+
+Intensity ratio is often associated with a specific cause of death, which allows all-cause mortality to be apportioned to the cause of interest. With cause-specific mortality counts denoted by $D_c$ (cause of interest) and $D_x$ (all causes of death), the intensity ratio in the $i$th age interval (denoted $\psi_i$) can be reasonably estimated as follows:
+
+<br>
+
+$$\psi_i = \frac{D_c}{D_x}\hspace{35pt}(5)$$
+It is assumed to be constant within each age interval.
+
+<br>
+
+As we continue to update the datasets for the baseline calculation, I have obtained the death counts of certain types of cancer from the [WHO cancer mortality database (IARC)](http://www-dep.iarc.fr/WHOdb/WHOdb.htm), which contains selected cancer mortality statistics by country, extracted from the WHO database. Causes of interest include lung cancer (ICD-10 code C33-34), liver cancer (ICD-10 code C22) and oral and pharyngeal cancer (ICD-10 code C00-14).
+
+<br>
+
+- **The Baseline Life Expectancy (LE) and Lifetime Risk (LR)**
+
+**Life expectancy (LE)** is the most frequently used summary measure of mortality conditions because it summarizes mortality rates across the entire age range. It is not affected by population age-structure. This means that values can be compared for different subgroups of the population at one point in time or for the same groups at different points in time^[8]. In addition, because life expectancy is expressed in years of life, it is easily interpreted by both policy makers and the public. These characteristics make life expectancy an essential tool for monitoring both trends and differences in mortality for the population. Consequently, extending this statistical concept to incorporate various states of health may generate acceptable and understandable statistics.
+
+**Lifetime risk (LR)** of developing or dying from cancer refers to the chance a person has, over the course of his or her lifetime (from birth to death), of being diagnosed with or dying from cancer. This risk estimate, like annual incidence and mortality data, provides another measure of how widespread cancer is.
+
+The expressions required for both baseline terms involve three elements: the probability of surviving from birth to the start of the $i$th interval $S_i$ , the probability of dying $q_i$, the intensity ratio $\psi_i$, and the fraction $\alpha_i$ as we discussed at the beginning of Section 3.2. The baseline life expectancy (LE) and lifetime risk (LR) are given by Brand: 
+
+<br>
+
+$$LE = \sum^{N-1}_{i=1}S_i(1-q_i(1 - \alpha_i))*n \hspace{35pt} (6)$$
+$$LR = \sum^{N}_{i=1}S_iq_i\psi_i \hspace{35pt} (7)$$
+where N is the number of intervals in the lifespan (90 years). Here for an abridged life table, N = 18 (= 90/5).
+
+<br>
+
+The lifetime risk of dying from the cause of interest is represented as the sum of the corresponding age-specific probabilities. We already know the probability of surviving from birth to the start of the ith interval ($S_i$), and the ($q_i$$\psi_i$) is the probability of dying from a cause-related death during that interval.
+
+We can derive the baseline indices for the case of lung cancer, using the 2010 Canadian population. All the computations are processed on the statistics platform RStudio.
+
+<br>
+```{r baseline, echo = TRUE}
+# Data of Canada, year 2010
+# Import the mortality rates for all causes of death
+mx <- read.table("Mx_5x1.txt", skip=2, header=TRUE)
+mx <- mx %>%
+  drop_na() %>%
+  filter(Year == 2010) %>%
+  slice(2:19) %>%
+  select(Total) %>%
+  as.matrix() %>%
+  as.numeric(mx)
+
+# Import death counts for all causes of death
+dx <- read.table("Deaths_5x1.txt", skip=2, header=TRUE)
+dx <- dx %>%
+  drop_na() %>%
+  filter(Year == 2010) %>%
+  slice(2:19) %>%
+  select(Total) %>%
+  as.matrix() %>%
+  as.numeric()
+
+# Import death counts of lung cancer 
+dx_lung <- read.csv("lung_deaths.csv", header=TRUE)
+dx_lung <- dx_lung %>%
+  drop_na() %>%
+  select(Deaths) %>%
+  as.matrix %>%
+  as.numeric()
+
+n <- as.numeric(length(mx))
+
+# 5-year age intervals 
+w <- 5  
+# Fraction of last year of life
+a = c(0.07, rep(0.5,n-1))  
+
+iratio <- dx_lung / dx  #Intensity ratio
+
+# The probability of dying in each age interval 
+qx <- (mx * w) / (1+(1-a) * w * mx)
+      
+# The probability of surviving to the end of an age interval
+px <- 1 - qx
+  
+# The baseline cumulative survival (denoted si) 
+si <- c(1, cumprod(px[-n])) 
+  
+# Compute the baseline life expectancy (LE)
+le <- sum(si[1:(n-1)] * (1-qx[1:(n-1)] * (1-a[1:(n-1)])) * w) 
+  
+# Compute the baseline lifetime risk (LR)
+lr <- sum(si[1:n] * qx[1:n] * iratio[1:n])
+
+print(c(le, lr))
+```
+
+<br>
+
+The following table list the computed lifetime risks (LR) of dying from a certain types of cancers. The information is based on incidence and mortality data for the Canadian population in 2010.
+
+```{r function le lr, echo = FALSE, warning = FALSE}
+calculate_le_lr <- function(mx_link, dx_link, cancer_link) {
+mx <- read.table(mx_link, skip=2, header=TRUE)
+mx <- mx %>%
+  drop_na() %>%
+  filter(Year == 2010) %>%
+  slice(2:19) %>%
+  select(Total) %>%
+  as.matrix() %>%
+  as.numeric(mx)
+
+dx <- read.table(dx_link, skip=2, header=TRUE)
+dx <- dx %>%
+  drop_na() %>%
+  filter(Year == 2010) %>%
+  slice(2:19) %>%
+  select(Total) %>%
+  as.matrix() %>%
+  as.numeric()
+
+dx_cancer <- read.csv(cancer_link, header=TRUE)
+dx_cancer <- dx_cancer %>%
+  drop_na() %>%
+  select(Deaths) %>%
+  as.matrix %>%
+  as.numeric()
+
+n <- as.numeric(length(mx))
+w <- 5  
+a = c(0.07, rep(0.5,n-1))  
+iratio <- dx_cancer / dx
+qx <- (mx * w) / (1+(1-a) * w * mx)
+px <- 1 - qx
+si <- c(1, cumprod(px[-n])) 
+le <- sum(si[1:(n-1)] * (1-qx[1:(n-1)] * (1-a[1:(n-1)])) * w) 
+lr <- sum(si[1:n] * qx[1:n] * iratio[1:n])
+return(lr)
+}
+
+mx_link <- paste("Mx_5x1.txt")
+dx_link <- paste("Deaths_5x1.txt")
+cancer_link <- paste("liver_deaths.csv")
+lr_liver <- calculate_le_lr(mx_link, dx_link, cancer_link)
+cancer_link <- paste("oral_deaths.csv")
+lr_oral <- calculate_le_lr(mx_link, dx_link, cancer_link)
+cancer_link <- paste("lung_deaths.csv")
+lr_lung <- calculate_le_lr(mx_link, dx_link, cancer_link)
+
+lr_all <- c(lr_lung, lr_liver, lr_oral)
+cancer <- c('Lung Cancer', 'Liver Cancer', 'Oral and Pharyngeal Cancer')
+icd <- c('C33-34', 'C22', 'C00-14')
+lr_frame <- data.frame(cancer, icd, lr_all)
+colnames(lr_frame) <- c("Cancer Type", "ICD-10", "Lifetime Risk")
+kable(lr_frame, caption = "Table 2 Life Expectancy and Lifetime Risk Associated with Certain Types of Cancers")
+```
+
+<br>
+
+The results in Table 2 have indicated how common the causes of interest are. Lung cancer is considered to be the leading cause of cancer death for both Canadian men and women, taking the lives of far more people than liver and oral cancers combined. The lifetime risk of dying from lung cancer is almost ten times of the risk of dying from liver cancer. Compared to lung cancer and liver cancer, oral and pharyngeal cancer is even rarer, with a lower lifetime risk of around 0.0037.
+
+<br>
+
+### 3.3 The Invariant Excess Relative Risk
+
+As in Brand (2005), when modifying the cause-specific mortality, the ERR is modeled as a multiplier applied to the baseline force of mortality for the cause of interest. Although ERRs often vary as a function of age or dose of exposure, ERRs in the CMLT approximation are assumed to be age-invariant. 
+
+ERRs in a dose-response model can be easy to understand, as we explained in the very beginning. In terms of the exposure of radiation, it is generally assumed that risk is proportional to dose. The simplest version of this assumption is the linear dose-response relationship. However, in the cases of liver cancer and oral and pharyngeal cancer, the exposure of interest associated with both diseases is alcohol consumption. So far no specific linear pattern of drinking levels has been linked to the variation of ERRs. But many studies have reported consistent relationships between average consumption of alcohol and the risk of developing different types of cancer^[9]. Based on this relationship, a practical range of ERR can be determined and explored when evaluating the performance of approximation in different types of cancers.
+
+<br>
+
+### 3.4 Modified Functions of Summary Measures
+
+- **Life-years lost (LYL)**
+
+Life-years lost (LYL) is one of the summary measures in the "family" of life-expectancy indices. Brand et al. (2005) used it to measure the impact of residential radon exposures on life expectancy for the Canadian population.
+
+In order to translate the age-specific ERRs ($\epsilon$) into LYL, I simply follow Brand by first modifying expressions for three key basic elements: intensity ratio ($\psi_i$), the probability of dying in each age interval ($q_i$) and the probability of surviving from birth to the start of the ith interval ($S_i$). The modified expressions for these three elements are adapted from Chiang^[10], based on the baseline elements $q_i$, $S_i$ and $\psi_i$.
+
+<br>
+
+$$q_{Mi} = 1- (1-q_i)^{(1 + \psi_i\epsilon)} \hspace{35pt} (8)$$
+$$S_{Mi} = \prod_{k=1}^{i-1}(1-q_{Mi}) \hspace{35pt} (9)$$
+$$\psi_{Mi} = \frac{\psi_i*(1+\epsilon)}{1+\psi_i*\epsilon}\hspace{35pt}(10)$$
+
+<br>
+
+Substituting those derived expressions into Equations (6) and (7) yields expressions for computing life expectancy and lifetime risk as functions of ERR of a cause-specific death.
+
+<br>
+
+$$LE_M = \sum^{N-1}_{i=1}S_{Mi}(1-q_{Mi}(1 - \alpha_i))*n \hspace{35pt} (11)$$
+$$LR_M = \sum^{N}_{i=1}S_{Mi}q_{Mi}\psi_{Mi} \hspace{35pt} (12)$$
+
+<br>
+
+Since $LYL = LE - LE_M$ , with LE for the baseline case being 78.4 years, LYL can be expressed as a function of ERR. Results computed from this function are considered to be exact values of LYL.
+
+```{r LYL~err exact function, echo=FALSE}
+LYL <- function(x){
+  
+  err <- x
+  
+  # Compute the qx, intensity ratio of the modified case
+  qx.modified <- 1 - (1 - qx)^(1 + iratio * err)
+  px.modified <- 1 - qx.modified
+  iratio.modified <- (iratio * (1 + err)) / (1 + iratio * err)
+  
+  # Compute the modified cumulative survival (denoted si.modified) 
+  si.modified<- c(1, cumprod(px.modified[-18]))
+  
+  # Compute the modified life expectancy 
+  le.modified <- sum(si.modified[1:17] * (1-qx.modified[1:17] 
+                                          * (1-a[1:17])) * w ) 
+  
+  lyl <- le - le.modified
+  
+  return(lyl)
+}
+```
+
+<br>
+
+- **Excess lifetime risk ratio (ELRR)**
+
+When presenting results on the excess cancer mortality, it has been common practice to express the ultimate conclusions in terms of excess lifetime cancer risks. The excess lifetime risk (ELR) is simply the difference between the lifetime risks among exposed and unexposed. The Excess lifetime risk ratio (ELRR) is the excess lifetime risk minus 1. As an example, to assess the impact of radiation exposure of radon, Brand et al. (2005) presented the proportionality relationship between the ERR and the radon-related ELRR via linear regression.
+
+According to the definition of ELRR, it can be presented as $\frac{LR_M}{LR} - 1$, with LR for the baseline case being 0.065 for the cause of lung cancer. Therefore, ELRR can be constructed as a function of ERR. Results computed from this function are considered to be exact values of ELRR.
+
+```{r ELRR exact function, echo=FALSE}
+ELRR <- function(x){
+  
+  err <- x
+  qx.modified <- 1 - (1 - qx)^(1 + iratio * err)
+  px.modified <- 1 - qx.modified
+  iratio.modified <- (iratio * (1 + err))/(1 + iratio * err)
+  
+  si.modified<- c(1, cumprod(px.modified[-18]))
+  
+  # Compute the modified lifetime risk
+  lr.modified <- sum(si.modified[1:18] 
+                     * qx.modified[1:18] * iratio.modified[1:18])
+  
+  elrr <- lr.modified / lr - 1
+  
+  return (elrr)
+}
+```
+<br>
+
+- **Risk of exposure-induced death (REID)**
+
+Risk of exposure-induced death (REID) is often reported in the literature on radiation effects. This concept originates from cohort analysis techniques: death rates in the exposed and in the unexposed cohorts are compared. A positive REID value indicates excess deaths in the exposed cohort. REID associated with ERR is also based on the baseline and modified basic elements. The method for computing modified REID is:
+
+$$REID = \sum^{N}_{i=1}[\prod^{i-1}_{k=1}(1-q_k)^{(1+\psi_k\epsilon)} * (1-(1-q_i)^{(1+\psi_i\epsilon)}) * \frac{\psi_i\epsilon}{(1 + \psi_i\epsilon)} \hspace{35pt} (13)$$
+<br>
+
+Although these formulas are fairly straightforward to implement in R, they are sufficiently complex to stifle intuition. 
+
+```{r REID exact function, echo=FALSE}
+REID <- function(x){
+  
+  err <- x
+  qx.modified <- 1 - (1 - qx)^(1 + iratio * err)
+  px.modified <- 1 - qx.modified
+  iratio.modified_2 <- (iratio * err)/(1 + iratio * err)
+  
+  si.modified<- c(1, cumprod(px.modified[-18]))
+  
+  reid <- sum(si.modified[1:18] * qx.modified[1:18] 
+              * iratio.modified_2[1:18])
+  
+  return(reid)
+}
+```
+
+<br>
+
+### 3.5 Approximation Functions of Summary Measures 
+
+- **Approximation function for ELRR**
+
+The approximations for summary measures of interest (LYL, ELRR and REID) start by simplifying two basic constructing elements: LE and LR. One underlying assumption is that the excess deaths occurring within an age interval only occur at the close of that interval -- referred to as "excess deaths at interval close" (EDAIC). Under this assumption, the EDAIC-based $q_i$, $S_i$ and $\psi_i$ are presented as follows:
+
+<br>
+$$q^{'}_{Mi} = q_i (1+\psi_i\epsilon) \hspace{35pt} (14)$$
+$$S^{'}_{Mi} = \prod_{k=1}^{i-1}(1-q^{'}_{Mi}) \hspace{35pt} (15)$$
+$$\psi^{'}_{Mi} = \frac{\psi_i*(1+\epsilon)}{1+\psi_i*\epsilon}\hspace{35pt}(16)$$
+
+<br>
+
+Here, a prime superscript ( ' ) is used to distinguish the EDAIC-based quantities from their exact counterparts. The simplifying $q^{'}_{Mi}$ expression represents a first-order Taylor series expansion of the expression for $q_{Mi}$, centered around $q_i$.
+
+The "zero-order" approximations of LE and LR can be easily derived by assuming that the EDAIC-based cumulative survival approximates the baseline $S_i$.
+$$S^{'}_{Mi} = S_i\hspace{35pt}(17)$$
+<br>
+
+The zero order approximations for LE and LR can be expressed as:
+
+$$LE^{'}_{Mi} \approx LE-\sum^{N-1}_{i=1}S_iq_i\psi_i(1-\alpha_i)\epsilon\hspace{35pt}(18)$$
+$$LR^{'}_{Mi} \approx LR(1+\epsilon)\hspace{35pt}(19)$$
+
+<br>
+
+The "zero-order" approximation will perform adequately under the circumstance that ERR is relatively small. However, a more accurate and robust approximation is easily obtained by adjusting for the difference between $S^{'}_{Mi}$ and $S_i$ (denoted $f_i$).
+
+<br>
+
+$$f_i = \frac{S^{'}_{Mi}}{S_i}\hspace{35pt}(20)$$
+
+<br
+
+The approximation of $f_i$ involves a Taylor series expansion, and we are able to obtain an effective average of $f_i$ across all age intervals. A weight $cn_1$ can also be calculated. Please refer to Brand (2005) for more details about the approximation of $f_i$.
+
+Thus the first-order approximation function of $LR^{'}_{Mi}$, expressed by ERR ($\epsilon$), is as follows:
+
+<br>
+
+$$LR^{'}_{Mi} \approx LR * (1 + (1-cn_1)\epsilon-cn_1\epsilon^2)\hspace{35pt}(21)$$
+
+<br>
+
+Since ELRR = $\frac{LR_M}{LR} - 1$, we can derive the first-order approximation of ELRR:
+
+<br>
+
+$$ELRR \approx (1-cn_1)\epsilon-cn_1\epsilon^2\hspace{35pt}(22)$$
+<br>
+
+```{r ELRR approx function, echo=FALSE}
+# ELRR ~ ERR
+
+# Compute weight cn1
+lambda <- (qx / (1 - qx)) * iratio
+sum.lambda <- c(0, cumsum(lambda[-18]))
+w1i <- si[1:18] * qx[1:18] * iratio[1:18]
+cn1 <- (sum(sum.lambda * w1i)) / sum(w1i)
+
+# The first-order approximation function for ELRR
+ApproxELRR <- function(x){
+  err <- x
+  elrr.edaic <-  (1 - cn1) * err - cn1 * err^2
+  return(elrr.edaic)
+}
+```
+
+- **Approximation function for LYL**
+
+An approximation for modified life expectancy $LE_{Mi}$ can be obtained by similar steps. The first-order approximations for both $LE_{Mi}$ and LYL can be obtained, as functions of ERR:
+
+<br>
+
+$$LE_{Mi} \approx (1-cn_2\epsilon)*LE\hspace{35pt}(23)$$
+
+<br>
+
+$$LYL \approx cn_2*\epsilon*LE\hspace{35pt}(24)$$
+Here $cn_2$ is also a weight obtained through the approximation process.
+
+<br>
+
+```{r LYL approx function, echo=FALSE}
+# Compute weight cn2
+lambda <- (qx / (1 - qx)) * iratio
+sum.lambda <- c(0, cumsum(lambda[-18]))
+w2i <- si * (1-qx * (1-a)) * w
+cn2 <- (sum(sum.lambda * w2i)) / sum(w2i)
+
+# The first-order approximation function for LYL
+ApproxLYL <- function(x){
+  
+  err <- x
+  lyl.edaic <- le * cn2 * x
+  return(lyl.edaic)
+} 
+```
+
+- **Approximation function for REID**
+
+An approximation for REID is obtained by using similar steps. The first-order approximation for
+REID can be derived, as a function of ERR:
+
+<br>
+
+$$REID = LR*(\epsilon-cn_1\epsilon^2)\hspace{35pt}(25)$$ 
+
+```{r REID approx function, echo=FALSE}
+# REID ~ ERR
+
+# The first-order approximation function for REID
+ApproxREID <- function(x){
+  err <- x
+  reid.edaic <- lr * (err - cn1 * err^2)
+  return(reid.edaic)
+} 
+
+```
+
+<br>
+
+## 4. Results
+
+In Brand (2005), tests of approximations have been conducted using mortality rate schedules for several causes of death, obtained for the 1994 Canadian population. Evaluation of approximation performance involves parallel computations of the exact (CMLT) and EDAIC-based approximate expressions for a range of causes of interest.
+
+Here I also found the approximations perform well for all three summary measures, by applying mortality data of year 2010. Unless otherwise mentioned, 5-year age intervals are used in all the cases. Besides lung cancer, two more causes of death have been explored with measuring the health impact of alcohol consumption.
+
+All-cause mortality rates for the 2010 Canadian population, directly retrieved from the Human Mortality Database, are used in the following tests as inputs to obtain the baseline case elements. Mortality counts of several causes of interest (lung cancer, liver cancer, oral and pharyngeal cancer) are provided by the WHO cancer mortality database (IARC). The goal of using data for 2010 is to test whether the CMLT algorithm and approximations of three summary measures are still applicable to the current epidemiological patterns of diseases.
+
+Three types of cancer have been selected to explore how performance varies when examining different causes of death. Lung cancer representing the major mortality cause can be compared with the other two types of cancer, which have much fewer deaths counts each year and represent as minor contributors to overall mortality.
+
+All results are presented graphically. Exact and EDAIC-based approximate results are displayed as scatter plots and lines, respectively. In each case scenario, the ERR range is chosen strategically. It mainly depends on which risk factor we are looking into.
+
+<br>
+
+- **The performance of CMLT approximations**
+
+Figure 1 plots LYL as a function of ERR for the case of lung cancer. The first-order approximation (red line) tracks its exact counterpart (blue scatter plot) quite well. In this case, the ERR extends to a magnitude of 15, which is roughly 1.5 times the ERR of cigarette smoking - the biggest cause of lung cancer by far^[11]. If the new approximations perform adequately over that ERR range, then it seems safe to assume that they will accommodate most environmental risk factors of practical interest.
+
+<br>
+
+```{r graph lyl, echo = FALSE, warning = FALSE}
+x <- seq(0, 15, by = 0.5)
+
+lyl.modified <- sapply(x, LYL)
+elrr.modified <- sapply(x, ELRR)
+reid.modified <- sapply(x, REID)
+
+lyl.approx <- sapply(x, ApproxLYL)
+elrr.approx <- sapply(x, ApproxELRR)
+reid.approx <- sapply(x, ApproxREID)
+
+plots <- data.frame(x, lyl.modified, elrr.modified, 
+                       reid.modified, lyl.approx, elrr.approx, reid.approx)
+colnames(plots) <- c("ERR", "LYL.m", "ELRR.m", 
+                        "REID.m", "LYL.approx", "ELRR.approx", "REID.approx")
+
+plots <- data.frame(x, lyl.modified, elrr.modified, 
+                       reid.modified, lyl.approx, elrr.approx, reid.approx)
+colnames(plots) <- c("ERR", "LYL.m", "ELRR.m", 
+                        "REID.m", "LYL.approx", "ELRR.approx", "REID.approx")
+
+p1 <- ggplot(plots, aes(x)) + 
+  geom_point(aes(y = lyl.modified), colour="blue") +  
+  geom_line(aes(y = lyl.approx), colour="red") +
+  xlab("ERR") + ylab("LYL")  
+  grid.arrange(p1, bottom = "Figure 1. LYL approximation for 2010 lung cancer mortality")
+```
+
+<br>
+
+Figure 2 presents how the CMLT approximations perform for the two remaining summary measures, ELRR and REID, respectively. Both approximations perform better than LYL on a certain rage of ERR (0-8). For ELRR, the first-order approximation underestimates the exact ELRR, but it maintains a relative error around 9% provided ERR < 8. The approximation for REID outperforms those for LYL and ELRR, with a relative error of only 3% over the same range of ERR.
+
+<br>
+
+```{r graph elrr reid, echo = FALSE, warning = FALSE}
+p2 <- ggplot(plots, aes(x)) + 
+  geom_point(aes(y = elrr.modified), colour="blue") + 
+  geom_line(aes(y = elrr.approx), colour="red") +
+  xlab("ERR") + ylab("ELRR")
+
+p3 <- ggplot(plots, aes(x)) + 
+  geom_point(aes(y = reid.modified), colour="blue") + 
+  geom_line(aes(y = reid.approx), colour="red") +
+  xlab("ERR") + ylab("REID")
+
+grid.arrange(p2, p3, ncol=2, bottom = "Figure 2. ELRR and REID approximations for 2010 lung cancer mortality")
+```
+
+<br>
+
+We notice that the EDAIC-based expressions of three indices actually provide an adequate approximation over a certain range of ERR, provided that the cause of interest is a minor mortality cause. In the case of lung cancer, when reaching ERRs out of a certain range, the approximations perform slightly less well.
+
+The performance of the CMLT approximations depends upon the cause of death being examined. To compare different causes of death, Table 2 is revisited. Lung cancer with a much higher LR can be considered as one of the most common cancers in Canada. In contrast, LRs of the other two rare cancers (liver cancer, oral and pharyngeal cancer) are both very small.
+
+```{r graph function, echo = FALSE, warning = FALSE}
+
+Approx_graph <- function(dx_cancer, cancer, x, f) {
+  
+  mx <- read.table("Mx_5x1.txt", skip=2, header=TRUE)
+  mx <- mx %>%
+    drop_na() %>%
+    filter(Year == 2010) %>%
+    slice(2:19) %>%
+    select(Total) %>%
+    as.matrix() %>%
+    as.numeric(mx)
+  
+  dx <- read.table("Deaths_5x1.txt", skip=2, header=TRUE)
+  dx <- dx %>%
+    drop_na() %>%
+    filter(Year == 2010) %>%
+    slice(2:19) %>%
+    select(Total) %>%
+    as.matrix() %>%
+    as.numeric()
+  
+  n <- as.numeric(length(mx))
+  
+  w <- 5  
+  a = c(0.07, rep(0.5,n-1))  
+  
+  iratio <- dx_cancer / dx  #Intensity ratio
+  
+  qx <- (mx * w) / (1+(1-a) * w * mx)
+  
+  px <- 1 - qx
+  
+  si <- c(1, cumprod(px[-n])) 
+  
+  le <- sum(si[1:(n-1)] * (1-qx[1:(n-1)] * (1-a[1:(n-1)])) * w) 
+  
+  lr <- sum(si[1:n] * qx[1:n] * iratio[1:n])
+  
+  # Weights used for approximation functions
+  lambda <- (qx / (1 - qx)) * iratio
+  sum.lambda <- c(0, cumsum(lambda[-18]))
+  w1i <- si[1:18] * qx[1:18] * iratio[1:18]
+  cn1 <- (sum(sum.lambda * w1i)) / sum(w1i)
+  w2i <- si * (1-qx * (1-a)) * w
+  cn2 <- (sum(sum.lambda * w2i)) / sum(w2i)
+  
+  # Exact modified functions
+  LYL <- function(x){
+    
+    err <- x
+    
+    qx.modified <- 1 - (1 - qx)^(1 + iratio * err)
+    px.modified <- 1 - qx.modified
+    iratio.modified <- (iratio * (1 + err)) / (1 + iratio * err)
+    
+    si.modified<- c(1, cumprod(px.modified[-18]))
+    
+    le.modified <- sum(si.modified[1:17] * (1-qx.modified[1:17] 
+                                            * (1-a[1:17])) * w ) 
+    
+    lyl <- le - le.modified
+    
+    return(lyl)
+  }
+  
+  ELRR <- function(x){
+    
+    err <- x
+    qx.modified <- 1 - (1 - qx)^(1 + iratio * err)
+    px.modified <- 1 - qx.modified
+    iratio.modified <- (iratio * (1 + err))/(1 + iratio * err)
+    
+    si.modified<- c(1, cumprod(px.modified[-18]))
+    
+    lr.modified <- sum(si.modified[1:18] 
+                       * qx.modified[1:18] * iratio.modified[1:18])
+    
+    elrr <- lr.modified / lr - 1
+    
+    return (elrr)
+  }
+  
+  REID <- function(x){
+    
+    err <- x
+    qx.modified <- 1 - (1 - qx)^(1 + iratio * err)
+    px.modified <- 1 - qx.modified
+    iratio.modified_2 <- (iratio * err)/(1 + iratio * err)
+    
+    si.modified<- c(1, cumprod(px.modified[-18]))
+    
+    reid <- sum(si.modified[1:18] * qx.modified[1:18] 
+                * iratio.modified_2[1:18])
+    
+    return(reid)
+  }
+  
+  # Approximation functions
+  ApproxELRR <- function(x){
+    err <- x
+    elrr.edaic <-  (1 - cn1) * err - cn1 * err^2
+    return(elrr.edaic)
+  }
+  
+  ApproxLYL <- function(x){
+    err <- x
+    lyl.edaic <- le * cn2 * x
+    return(lyl.edaic)
+  } 
+  
+  ApproxREID <- function(x){
+    err <- x
+    reid.edaic <- lr * (err - cn1 * err^2)
+    return(reid.edaic)
+  } 
+  
+  lyl.modified <- sapply(x, LYL)
+  elrr.modified <- sapply(x, ELRR)
+  reid.modified <- sapply(x, REID)
+  
+  lyl.approx <- sapply(x, ApproxLYL)
+  elrr.approx <- sapply(x, ApproxELRR)
+  reid.approx <- sapply(x, ApproxREID)
+  
+  plots <- data.frame(x, lyl.modified, elrr.modified, 
+                      reid.modified, lyl.approx, elrr.approx, reid.approx)
+  colnames(plots) <- c("ERR", "LYL.m", "ELRR.m", 
+                       "REID.m", "LYL.approx", "ELRR.approx", "REID.approx")
+  
+  p1 <- ggplot(plots, aes(x)) + 
+    geom_point(aes(y = lyl.modified), colour="blue") +  
+    geom_line(aes(y = lyl.approx), colour="red") +
+    xlab("ERR") + ylab("LYL") 
+  
+  p2 <- ggplot(plots, aes(x)) + 
+    geom_point(aes(y = elrr.modified), colour="blue") + 
+    geom_line(aes(y = elrr.approx), colour="red") +
+    xlab("ERR") + ylab("ELRR") 
+
+  p3 <- ggplot(plots, aes(x)) + 
+    geom_point(aes(y = reid.modified), colour="blue") + 
+    geom_line(aes(y = reid.approx), colour="red") +
+    xlab("ERR") + ylab("REID") 
+
+  title = paste("Figure.", f, " LYL, ELRR, REID approximations for 2010", cancer, "cancer mortality")
+  grid.arrange(p1, p2, p3, ncol = 3, top=title)
+  
+}
+
+```
+<br>
+
+```{r fig 3 oral, echo = FALSE, warning = FALSE}
+dx_cancer <- read.csv("oral_deaths.csv", header=TRUE)
+dx_cancer <- dx_cancer %>%
+  drop_na() %>%
+  select(Deaths) %>%
+  as.matrix %>%
+  as.numeric()
+
+cancer = paste("oral and pharyngeal")
+x <- seq(0, 12, by=0.5)
+f = 3
+
+Approx_graph(dx_cancer, cancer, x, f)
+
+```
+
+<br>
+
+Figure 3 shows the performance of approximations for LYL, ELRR and REID in the case of oral and pharyngeal cancer. The exposure associated with ERR is alcohol consumption. The exact values are represented by the blue scatter plots and the approximation fucntions are shown in red lines.
+
+Alcohol consumption is a major risk factor for oral and pharyngeal cancer (IARC 2004). In Table 1, ERR estimates are shown to quantify the association between level of alcohol consumption and the development of oral and pharyngeal cancer, indicating 0.75 with consumption of 25g of alcohol/day, 1.85 with consumption of 50g/day, and 5.01 with consumption of 100g/day Therefore, in Figure 3 the ERR range explored extends to 12, which is more than 2 times the ERR expected from alcohol consumption of 100g/day. The first-order approximation of LYL tracks the exact values quite well, displaying negligible relative error. The first-order approximation of ELRR has a relative error around 3% over the whole ERR range. The approximations of REID fit the exact values almost perfectly, with relative errors below 1%.
+
+<br>
+
+```{r fig 4, echo = FALSE, warning = FALSE}
+dx_cancer <- read.csv("liver_deaths.csv", header=TRUE)
+dx_cancer <- dx_cancer %>%
+  drop_na() %>%
+  select(Deaths) %>%
+  as.matrix %>%
+  as.numeric()
+
+cancer = paste("liver")
+x <- seq(0, 6, by=0.5)
+f = 4
+
+Approx_graph(dx_cancer, cancer, x, f)
+```
+
+Figure 4 plots ERR as functions of the three summary measures for liver cancer. The exact values are represented by the blue scatter plots and the approximation fucntions are shown in red lines.
+
+Liver cancer is a consequence of long-term heavy alcohol consumption. According to Table 1, the ERR was 0.17 with consumption of 25g of alcohol/day, 0.36 with consumption of 50g/day, and 0.86 with consumption of 100g/day. However, cirrhosis is still the biggest risk factor associated with liver cancer. Most cases of the alcohol-related liver cancer develops in people who are already suffering from cirrhosis. Thus the ERRs of alcohol consumption are relatively small in all drinking levels compared to oral and pharyngeal cancer. The approximations perform adequately for the case of liver cancer, with ERR ranging from 0 to 6.
+
+<br>
+
+## 5. Discussion
+
+Test results in the previous section demonstrate good performances of the first-order approximations for three summary measures LYL, ELRR and REID over certain ranges of ERR. Relative errors have been computed to evaluate the degree of accuracy. For the cases of liver cancer as well as oral and pharyngeal cancer, the approximations of all three summary measures track the exact values quite well with small relative errors, even negligible for LYL (below 1%) and REID (below 1%). For lung cancer, relative errors are potentially large over the ERR range that we originally set (0-15). However, when we reset the ERR to a smaller range, the approximations still perform adequately with relative errors below 10% for three summary measures.
+
+The CMLT approximations rely on the Taylor series expansion for $f_i$ and the EDAIC simplifying assumption. The simplifying assumption underpinning the EDAIC-based approximations is that the excess deaths within an interval are decremented from the exposure-to-risk population only at the close of that interval. While in reality, excess deaths happen throughout the interval. The simplification causes the probability of death ($q_i$) to be overestimated, which leads to underestimation of the cumulative survival ($S_i$, product of probability of survival in each age interval). Thus we can deduce that the approximate LYL has been overestimated. This deduction can be confirmed by the graph of LYL approximation for lung cancer (Figure 1). In contrast, in the same case, graphs of approximate ELRR and REID display a tendency of underestimating the exact values. Over the selected ERR range (0-8), both summary measures indicates underestimation of the exact values (Figure 2). Actually, through testing under multiple causes of death, results show that the performances of approximations depend on the prominence of the cause, which can be determined by the value of the lifetime risk (LR).
+
+The ERR-based interpretation of health impacts is very helpful in understanding the relative importance of the different factors entering the model. It might be an advantage to put more emphasis on presenting the summary measures in terms of age-specific excess risk ratio. However, considerations of lifetime risks are also important. Computation of lifetime risk is usually based on rather complicated life-table calculations. The performances of approximations tend to be better for minor mortality cause (lower lifetime risk). In addition, the practical range of ERR should be selected strategically.
+
+## 6. Conclusion
+
+In this report, simple approximate expressions of three summary measures: life-years lost (LYL), excess lifetime risk ratio (ELRR), and risk of exposure-induced death (REID) are derived using the CMLT algorithm. The approximate expressions highlight the important issues involved in calculations of summary measures of population health for ERR-based models. They are evaluated by comparing them with the exact values based on CMLT calculations. Tests have been conducted over a set of practical circumstances (a certain types of cancers). The approximations tend to perform better for rare cancers or for the situation where the risk factor under investigation has low exposure levels.
+
+When excess lifetime risk projections clearly involve speculations about potential diseases, it is critical to make the structure of the relationships as clear as possible. An approach using the simple approximations described in this report is a useful alternative to the complicated life-table calculations. The approximations are based on an age-constant excess risk ratio model. By now, the only serious doubt is about the appropriateness of this type of model for a wider set of causes of death. Moreover, automation of testing needs to be improved by developing more efficient R functions in order to test the algorithm under more causes of interest.
+
