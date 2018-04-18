@@ -1,0 +1,7 @@
+Type_of_Cancer,ICD10,Drinking_Category,ERR
+Oral Cavity and Pharyngeal Cancer,C00-14,25g/day,0.75
+Oral Cavity and Pharyngeal Cancer,C00-14,50g/day,1.85
+Oral Cavity and Pharyngeal Cancer,C00-14,100g/day,5.01
+Liver Cancer,C22,25g/day,0.17
+Liver Cancer,C22,50g/day,0.36
+Liver Cancer,C22,100g/day,0.86
