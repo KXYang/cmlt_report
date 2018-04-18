@@ -1,8 +1,8 @@
 ---
 title: "The Cause-Modified Life Table and Its Applications"
-author: "Chris Yang"
-date: "April 18, 2018"
-output: html_document
+subtitle: "An Analysis with Cancer Mortality Data"
+author: "Chris (Kexin) Yang"
+layout: page
 ---
 
 ```{r setup, include=FALSE}
