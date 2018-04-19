@@ -1,6 +1,7 @@
 ---
 title: "The Cause-Modified Life Table and Its Applications"
 subtitle: "An Analysis with Cancer Mortality Data"
+
 author: Chris (Kexin) Yang
 layout: page
 ---
