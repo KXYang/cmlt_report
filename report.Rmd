@@ -1,6 +1,7 @@
 ---
 title: "The Cause-Modified Life Table and Its Applications"
 subtitle: "An Analysis with Cancer Mortality Data"
+author: Chris (Kexin) Yang
 layout: page
 ---
 
@@ -553,7 +554,7 @@ All results are presented graphically. Exact and EDAIC-based approximate results
 
 - **The performance of CMLT approximations**
 
-Figure 1 plots LYL as a function of ERR for the case of lung cancer. The first-order approximation (red line) tracks its exact counterpart (blue scatter plot) quite well. In this case, the ERR extends to a magnitude of 15, which is roughly 1.5 times the ERR of cigarette smoking - the biggest cause of lung cancer by far. If the new approximations perform adequately over that ERR range, then it seems safe to assume that they will accommodate most environmental risk factors of practical interest.
+**Figure 1** plots LYL as a function of ERR for the case of lung cancer. The first-order approximation (red line) tracks its exact counterpart (blue scatter plot) quite well. In this case, the ERR extends to a magnitude of 15, which is roughly 1.5 times the ERR of cigarette smoking - the biggest cause of lung cancer by far. If the new approximations perform adequately over that ERR range, then it seems safe to assume that they will accommodate most environmental risk factors of practical interest.
 
 <br>
 
@@ -587,7 +588,7 @@ p1 <- ggplot(plots, aes(x)) +
 
 <br>
 
-Figure 2 presents how the CMLT approximations perform for the two remaining summary measures, ELRR and REID, respectively. Both approximations perform better than LYL on a certain rage of ERR (0-8). For ELRR, the first-order approximation underestimates the exact ELRR, but it maintains a relative error around 9% provided ERR < 8. The approximation for REID outperforms those for LYL and ELRR, with a relative error of only 3% over the same range of ERR.
+**Figure 2** presents how the CMLT approximations perform for the two remaining summary measures, ELRR and REID, respectively. Both approximations perform better than LYL on a certain rage of ERR (0-8). For ELRR, the first-order approximation underestimates the exact ELRR, but it maintains a relative error around 9% provided ERR < 8. The approximation for REID outperforms those for LYL and ELRR, with a relative error of only 3% over the same range of ERR.
 
 <br>
 
@@ -782,7 +783,7 @@ Approx_graph(dx_cancer, cancer, x, f)
 
 <br>
 
-Figure 3 shows the performance of approximations for LYL, ELRR and REID in the case of oral and pharyngeal cancer. The exposure associated with ERR is alcohol consumption. The exact values are represented by the blue scatter plots and the approximation fucntions are shown in red lines.
+**Figure 3** shows the performance of approximations for LYL, ELRR and REID in the case of oral and pharyngeal cancer. The exposure associated with ERR is alcohol consumption. The exact values are represented by the blue scatter plots and the approximation fucntions are shown in red lines.
 
 Alcohol consumption is a major risk factor for oral and pharyngeal cancer (IARC 2004). In Table 1, ERR estimates are shown to quantify the association between level of alcohol consumption and the development of oral and pharyngeal cancer, indicating 0.75 with consumption of 25g of alcohol/day, 1.85 with consumption of 50g/day, and 5.01 with consumption of 100g/day Therefore, in Figure 3 the ERR range explored extends to 12, which is more than 2 times the ERR expected from alcohol consumption of 100g/day. The first-order approximation of LYL tracks the exact values quite well, displaying negligible relative error. The first-order approximation of ELRR has a relative error around 3% over the whole ERR range. The approximations of REID fit the exact values almost perfectly, with relative errors below 1%.
 
@@ -803,7 +804,7 @@ f = 4
 Approx_graph(dx_cancer, cancer, x, f)
 ```
 
-Figure 4 plots ERR as functions of the three summary measures for liver cancer. The exact values are represented by the blue scatter plots and the approximation fucntions are shown in red lines.
+**Figure 4** plots ERR as functions of the three summary measures for liver cancer. The exact values are represented by the blue scatter plots and the approximation fucntions are shown in red lines.
 
 Liver cancer is a consequence of long-term heavy alcohol consumption. According to Table 1, the ERR was 0.17 with consumption of 25g of alcohol/day, 0.36 with consumption of 50g/day, and 0.86 with consumption of 100g/day. However, cirrhosis is still the biggest risk factor associated with liver cancer. Most cases of the alcohol-related liver cancer develops in people who are already suffering from cirrhosis. Thus the ERRs of alcohol consumption are relatively small in all drinking levels compared to oral and pharyngeal cancer. The approximations perform adequately for the case of liver cancer, with ERR ranging from 0 to 6.
 
