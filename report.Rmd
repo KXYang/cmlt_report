@@ -603,7 +603,7 @@ p3 <- ggplot(plots, aes(x)) +
   geom_line(aes(y = reid.approx), colour="red") +
   xlab("ERR") + ylab("REID")
 
-grid.arrange(p2, p3, ncol=2, bottom = "Figure 2. ELRR and REID approximations for 2010 lung cancer mortality")
+grid.arrange(arrangeGrob(p2, p3, ncol=2, nrow=1), heights=c(7,4), bottom = "Figure 2. ELRR and REID approximations for 2010 lung cancer mortality")
 ```
 
 <br>
@@ -758,7 +758,7 @@ Approx_graph <- function(dx_cancer, cancer, x, f) {
     xlab("ERR") + ylab("REID") 
 
   title = paste("Figure.", f, " LYL, ELRR, REID approximations for 2010", cancer, "cancer mortality")
-  grid.arrange(p1, p2, p3, ncol = 3, top=title)
+  grid.arrange(p1, p2, p3, nrow=2, ncol = 2, top=title)
   
 }
 
