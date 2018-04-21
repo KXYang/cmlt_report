@@ -448,10 +448,16 @@ The "zero-order" approximation will perform adequately under the circumstance th
 
 $$f_i = \frac{S^{'}_{Mi}}{S_i}\hspace{35pt}(20)$$
 
-<br
+<br>
 
-The approximation of $f_i$ involves a Taylor series expansion, and we are able to obtain an effective average of $f_i$ across all age intervals. A weight $cn_1$ can also be calculated. Please refer to Brand (2005) for more details about the approximation of $f_i$.
+The approximation of $f_i$ involves a Taylor series expansion, and we are able to obtain an effective average of $f_i$ across all age intervals. A weight $cn_1$ can also be calculated using the probability of dying $q_i$, the intensity ratio $\psi_i$, and the probability of surviving from birth to the start of the ith interval $S_i$:
 
+```{r cn1, echo = TRUE}
+  lambda <- (qx / (1 - qx)) * iratio
+  sum.lambda <- c(0, cumsum(lambda[-18]))
+  w1i <- si[1:18] * qx[1:18] * iratio[1:18]
+  cn1 <- (sum(sum.lambda * w1i)) / sum(w1i)
+```
 Thus the first-order approximation function of $LR^{'}_{Mi}$, expressed by ERR ($\epsilon$), is as follows:
 
 <br>
@@ -495,12 +501,19 @@ $$LE_{Mi} \approx (1-cn_2\epsilon)*LE\hspace{35pt}(23)$$
 <br>
 
 $$LYL \approx cn_2*\epsilon*LE\hspace{35pt}(24)$$
-Here $cn_2$ is also a weight obtained through the approximation process.
+Here $cn_2$ is also a weight obtained through the approximation process. It can be calculated in R using the probability of dying $q_i$, the intensity ratio $\psi_i$, the fraction $\alpha_i$, the age interval of 5 years, and the probability of surviving from birth to the start of the ith interval $S_i$:
+
+```{r cn2, echo=TRUE}
+  lambda <- (qx / (1 - qx)) * iratio
+  sum.lambda <- c(0, cumsum(lambda[-18]))
+  w2i <- si * (1-qx * (1-a)) * w
+  
+  cn2 <- (sum(sum.lambda * w2i)) / sum(w2i)
+```
 
 <br>
 
 ```{r LYL approx function, echo=FALSE}
-# Compute weight cn2
 lambda <- (qx / (1 - qx)) * iratio
 sum.lambda <- c(0, cumsum(lambda[-18]))
 w2i <- si * (1-qx * (1-a)) * w

@@ -456,7 +456,14 @@ print(c(le, lr))</code></pre>
 <p>The “zero-order” approximation will perform adequately under the circumstance that ERR is relatively small. However, a more accurate and robust approximation is easily obtained by adjusting for the difference between <span class="math inline">\(S^{'}_{Mi}\)</span> and <span class="math inline">\(S_i\)</span> (denoted <span class="math inline">\(f_i\)</span>).</p>
 <p><br></p>
 <p><span class="math display">\[f_i = \frac{S^{'}_{Mi}}{S_i}\hspace{35pt}(20)\]</span></p>
-<p><br The approximation of $f_i$ involves a Taylor series expansion, and we are able to obtain an effective average of $f_i$ across all age intervals. A weight $cn_1$ can also be calculated. Please refer to Brand (2005) for more details about the approximation of $f_i$. Thus the first-order approximation function of $LR^{'}_{Mi}$, expressed by ERR ($\epsilon$), is as follows: <br></p>
+<p><br></p>
+<p>The approximation of <span class="math inline">\(f_i\)</span> involves a Taylor series expansion, and we are able to obtain an effective average of <span class="math inline">\(f_i\)</span> across all age intervals. A weight <span class="math inline">\(cn_1\)</span> can also be calculated using the probability of dying <span class="math inline">\(q_i\)</span>, the intensity ratio <span class="math inline">\(\psi_i\)</span>, and the probability of surviving from birth to the start of the ith interval <span class="math inline">\(S_i\)</span>:</p>
+<pre class="r"><code>  lambda &lt;- (qx / (1 - qx)) * iratio
+  sum.lambda &lt;- c(0, cumsum(lambda[-18]))
+  w1i &lt;- si[1:18] * qx[1:18] * iratio[1:18]
+  cn1 &lt;- (sum(sum.lambda * w1i)) / sum(w1i)</code></pre>
+<p>Thus the first-order approximation function of <span class="math inline">\(LR^{'}_{Mi}\)</span>, expressed by ERR (<span class="math inline">\(\epsilon\)</span>), is as follows:</p>
+<p><br></p>
 <p><span class="math display">\[LR^{'}_{Mi} \approx LR * (1 + (1-cn_1)\epsilon-cn_1\epsilon^2)\hspace{35pt}(21)\]</span></p>
 <p><br></p>
 <p>Since ELRR = <span class="math inline">\(\frac{LR_M}{LR} - 1\)</span>, we can derive the first-order approximation of ELRR:</p>
@@ -470,7 +477,12 @@ print(c(le, lr))</code></pre>
 <p><br></p>
 <p><span class="math display">\[LE_{Mi} \approx (1-cn_2\epsilon)*LE\hspace{35pt}(23)\]</span></p>
 <p><br></p>
-<p><span class="math display">\[LYL \approx cn_2*\epsilon*LE\hspace{35pt}(24)\]</span> Here <span class="math inline">\(cn_2\)</span> is also a weight obtained through the approximation process.</p>
+<p><span class="math display">\[LYL \approx cn_2*\epsilon*LE\hspace{35pt}(24)\]</span> Here <span class="math inline">\(cn_2\)</span> is also a weight obtained through the approximation process. It can be calculated in R using the probability of dying <span class="math inline">\(q_i\)</span>, the intensity ratio <span class="math inline">\(\psi_i\)</span>, the fraction <span class="math inline">\(\alpha_i\)</span>, the age interval of 5 years, and the probability of surviving from birth to the start of the ith interval <span class="math inline">\(S_i\)</span>:</p>
+<pre class="r"><code>  lambda &lt;- (qx / (1 - qx)) * iratio
+  sum.lambda &lt;- c(0, cumsum(lambda[-18]))
+  w2i &lt;- si * (1-qx * (1-a)) * w
+  
+  cn2 &lt;- (sum(sum.lambda * w2i)) / sum(w2i)</code></pre>
 <p><br></p>
 <ul>
 <li><strong>Approximation function for REID</strong></li>
