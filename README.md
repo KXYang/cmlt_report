@@ -7,4 +7,6 @@ In this project, I reproduced Professor Brand's CMLT approximations using the Ca
 
 This work relies heavily on the statistics platform RStudio (freeware that has a power and versatility that well suits the purposes).
 
-Data used in this project are retrieved from the Human Mortality Database (www.mortality.org). It was created to provide open, international access to detailed mortality and population. The database contains original life tables for 37 countries or areas, as well as all raw data used in constructing those tables
+Data used in this project are retrieved from the Human Mortality Database (www.mortality.org). It was created to provide open, international access to detailed mortality and population. The database contains original life tables for 37 countries or areas, as well as all raw data used in constructing those tables.
+
+The final report can be viewed here: https://kxyang.github.io/cmlt_report/report.html
