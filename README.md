@@ -1,7 +1,7 @@
-# cmlt_report
-## sample report created by R Markdown
+# Cause-modified Life Table Algorithm
+## Sample report created by R Markdown
 
-This is a reproducible research project based on an article by Professor Kevin P. Brand at the University of Ottawa, Canada. This article [Kevin P. Brand, Risk Analysis 25: 695-709 (2005)] mainly discussed an algorithm referred to as the cause-modified life table (CMLT). Also an approach for approximating that algorithm has been used to obtain remarkably simplified expressions of three population health summary measures: life-years lost (LYL), excess lifetime risk ratio (ELRR), and risk of exposure-induced death (REID). 
+This is a reproducible research project based on an article by Professor Kevin P. Brand at the University of Ottawa, Canada. This article [Kevin P. Brand, Risk Analysis 25: 695-709 (2005)] mainly discussed an algorithm referred to as the cause-modified life table (CMLT). Also, an approach for approximating that algorithm has been used to obtain remarkably simplified expressions of three population health summary measures: life-years lost (LYL), excess lifetime risk ratio (ELRR), and risk of exposure-induced death (REID). 
 
 In this project, I reproduced Professor Brand's CMLT approximations using the Canadian lung cancer mortality data for 2010. I explored whether such an algoritm can be applied to two other causes of death with the exposure of alcohol consumption.
 
